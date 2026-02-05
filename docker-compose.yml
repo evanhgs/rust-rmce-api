@@ -1,0 +1,28 @@
+services:
+  rmce-db:
+    image: postgres:latest
+    container_name: rmce_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rmce_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432" 
+    volumes:
+      - rmce-data:/var/lib/postgresql/data
+    networks:
+      - rmce-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rmce_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  rmce-network:
+    driver: bridge
+    name: rmce-network
+volumes:
+  rmce-data:
