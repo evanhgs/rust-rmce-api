@@ -157,9 +157,13 @@ async fn create_user_returns_200() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     };
 
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     let body = serde_json::json!({
-        "username": "test_user_routes",
-        "email": "test_user_routes@example.com"
+        "username": format!("test_user_routes_{}", timestamp),
+        "email": format!("test_user_routes_{}@example.com", timestamp)
     });
 
     let request = Request::builder()
