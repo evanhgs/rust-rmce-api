@@ -32,7 +32,7 @@ export $(cat .env | grep -v '^#' | xargs)
 if ! docker ps | grep -q rmce_db; then
     echo -e "${YELLOW}⚠️  PostgreSQL container not running${NC}"
     echo "   Starting Docker containers..."
-    docker-compose up -d
+    docker compose up -d
     sleep 5
     echo -e "${GREEN}✓  PostgreSQL started${NC}"
 fi

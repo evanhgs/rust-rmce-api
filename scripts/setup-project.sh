@@ -31,7 +31,7 @@ fi
 export $(cat .env | grep -v '^#' | xargs)
 
 echo -e "${BLUE}📦 Step 1: Starting Docker containers...${NC}"
-docker-compose up -d
+docker compose up -d
 
 # Wait for PostgreSQL to be ready
 echo -e "${BLUE}⏳ Waiting for PostgreSQL to be ready...${NC}"
@@ -85,8 +85,8 @@ echo ""
 echo "Next steps:"
 echo "  1. Run the API:     ${BLUE}cargo run${NC}"
 echo "  2. Run tests:       ${BLUE}./run-all-tests.sh${NC}"
-echo "  3. View logs:       ${BLUE}docker-compose logs -f${NC}"
-echo "  4. Stop database:   ${BLUE}docker-compose down${NC}"
+echo "  3. View logs:       ${BLUE}docker compose logs -f${NC}"
+echo "  4. Stop database:   ${BLUE}docker compose down${NC}"
 echo ""
 echo "API will be available at: http://localhost:3000"
 echo "Database is running on:   localhost:5432"
