@@ -1,19 +1,38 @@
-use axum::{routing::get, Extension, Router};
+use axum::{
+    routing::get, 
+    middleware,
+    Extension, Router
+};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 
 use crate::db::DbPool;
+use crate::middleware::auth_middleware;
 
 pub mod posts;
 pub mod users;
 pub mod auth;
+pub mod routes;
+pub mod friends;
+pub mod challenges;
+pub mod sensor_data;
 
 pub fn create_app(pool: DbPool) -> Router {
+    let protected_routes = Router::new()
+        .nest("/routes", routes::router())
+        .nest("/friends", friends::router())
+        .nest("/api", challenges::router())
+        .nest("/sensor-data", sensor_data::router())
+        .layer(middleware::from_fn(auth_middleware));
+
     Router::new()
         .route("/", get(|| async { "OK" }))
+        // Public routes
+        .nest("/auth", auth::router())
         .nest("/posts", posts::router())
         .nest("/users", users::router())
-        .nest("/auth", auth::router())
+        // Protected routes
+        .merge(protected_routes)
         .layer(Extension(pool))
         .layer(
             TraceLayer::new_for_http()

@@ -10,6 +10,7 @@
 
 ## Migrations
 
+`sqlx migrate add xxxxx`
 `sqlx database create`
 `sqlx migrate run`
 

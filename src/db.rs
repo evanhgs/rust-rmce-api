@@ -1,6 +1,6 @@
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use std::time::Duration;
-use tracing::{info, warn, error};
+use tracing::{info, error};
 
 pub type DbPool = Pool<Postgres>;
 
