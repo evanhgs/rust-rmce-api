@@ -1,2 +1,0 @@
-
-./setup-and-test.sh
