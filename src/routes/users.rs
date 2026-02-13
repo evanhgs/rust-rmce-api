@@ -2,7 +2,7 @@ use axum::{
     Json, Router, 
     extract::{Extension, Path}, 
     http::{StatusCode}, 
-    routing::get
+    routing::{get, post}
 };
 use tracing::{info, warn, error};
 
@@ -15,6 +15,7 @@ pub fn router() -> Router {
     Router::new()
         .route("/", get(get_users).post(create_user))
         .route("/{id}", get(get_user).delete(delete_user))
+        .route("/{user_id}/friends/{friend_id}", post(add_friend))
 }
 
 async fn create_user(
@@ -109,5 +110,62 @@ async fn delete_user(
             error!("Erreur lors de la suppression de l'utilisateur {}: {}", id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
+    }
+}
+
+async fn add_friend(
+    Extension(pool): Extension<DbPool>,
+    Path((user_id, friend_id)): Path<(i32, i32)>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    info!("Ajout de l'ami {} à l'utilisateur {}", friend_id, user_id);
+
+    // Check if both users exist
+    let user_exists = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+        .bind(user_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            error!("Erreur lors de la vérification de l'utilisateur: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let friend_exists = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
+        .bind(friend_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            error!("Erreur lors de la vérification de l'ami: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if !user_exists || !friend_exists {
+        warn!("Utilisateur ou ami non trouvé: user={}, friend={}", user_id, friend_id);
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    // Add friendship
+    let result = sqlx::query(
+        "INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'pending')
+         ON CONFLICT (user_id, friend_id) DO NOTHING"
+    )
+    .bind(user_id)
+    .bind(friend_id)
+    .execute(&pool)
+    .await
+    .map_err(|e| {
+        error!("Erreur lors de l'ajout de l'ami: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if result.rows_affected() > 0 {
+        info!("Ami {} ajouté avec succès à l'utilisateur {}", friend_id, user_id);
+        Ok(Json(serde_json::json!({
+            "message": "Friend request sent successfully"
+        })))
+    } else {
+        info!("Demande d'ami déjà existante");
+        Ok(Json(serde_json::json!({
+            "message": "Friend request already exists"
+        })))
     }
 }
