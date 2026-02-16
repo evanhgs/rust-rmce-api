@@ -1,0 +1,11 @@
+# Cargo audit configuration
+# See: https://rustsec.org/cargo-audit/
+
+[advisories]
+# Ignore RUSTSEC-2023-0071 for rsa crate
+# This vulnerability comes from sqlx-mysql which is NOT being used in this project.
+# We only use sqlx with the postgres feature, so the MySQL driver (and its rsa dependency)
+# is not actually compiled or included in the binary.
+# Verified with: cargo tree | grep -i rsa (returns nothing)
+ignore = ["RUSTSEC-2023-0071"]
+
