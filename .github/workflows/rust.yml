@@ -70,6 +70,9 @@ jobs:
     - name: Run Clippy
       run: cargo clippy -- -D warnings
 
+    - name: Copy .env.example to .env
+      run: cp .env.example .env
+
     - name: Build project
       run: cargo build --verbose
 
