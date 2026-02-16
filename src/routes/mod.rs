@@ -12,14 +12,14 @@ use crate::middleware::auth_middleware;
 pub mod posts;
 pub mod users;
 pub mod auth;
-pub mod routes;
+pub mod parcours;
 pub mod friends;
 pub mod challenges;
 pub mod sensor_data;
 
 pub fn create_app(pool: DbPool) -> Router {
     let protected_routes = Router::new()
-        .nest("/routes", routes::router())
+        .nest("/routes", parcours::router())
         .nest("/friends", friends::router())
         .nest("/api", challenges::router())
         .nest("/sensor-data", sensor_data::router())
