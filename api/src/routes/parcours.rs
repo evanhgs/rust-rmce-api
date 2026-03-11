@@ -7,11 +7,12 @@ use axum::{
 use tracing::{info, warn, error};
 use serde::Deserialize;
 
+use shared::jwt::Claims;
+
 use crate::{
     db::DbPool,
     models::route::{CreateRoute, Route, UpdateRoute},
     models::score::{CreateScore, Score},
-    routes::auth::Claims,
 };
 
 pub fn router() -> Router {

@@ -4,25 +4,79 @@ services:
     container_name: rmce_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rmce_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB:       ${POSTGRES_DB:-rmce_db}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      PGDATA: /var/lib/postgresql/data/pgdata
+      PGDATA:            /var/lib/postgresql/data/pgdata
     ports:
-      - "${POSTGRES_PORT:-5432}:5432" 
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - rmce-data:/var/lib/postgresql/data
     networks:
       - rmce-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rmce_db}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rmce_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rmce_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - rmce-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: rmce_api
+    restart: unless-stopped
+    depends_on:
+      rmce-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@rmce-db:5432/${POSTGRES_DB:-rmce_db}
+      JWT_SECRET:   ${JWT_SECRET}
+      RUST_LOG:     ${RUST_LOG:-info}
+    ports:
+      - "5000:5000"
+    networks:
+      - rmce-network
+
+  geo-service:
+    build:
+      context: .
+      dockerfile: geo-service/Dockerfile
+    container_name: rmce_geo
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      REDIS_URL:    redis://redis:6379
+      API_BASE_URL: http://api:5000
+      JWT_SECRET:   ${JWT_SECRET}
+      RUST_LOG:     ${RUST_LOG:-info}
+    ports:
+      - "8080:8080"
+    networks:
+      - rmce-network
 
 networks:
   rmce-network:
     driver: bridge
     name: rmce-network
+
 volumes:
   rmce-data:

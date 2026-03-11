@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post, put}
 };
 use tracing::{info, warn, error};
+use shared::jwt::Claims;
 
 use crate::{
     db::DbPool,
@@ -22,9 +23,9 @@ pub fn router() -> Router {
 
 async fn get_friends(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<FriendInfo>>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
+    let user_id = claims.user_id;
     
     info!("Récupération des amis de l'utilisateur {}", user_id);
     
@@ -49,10 +50,10 @@ async fn get_friends(
 
 async fn add_friend(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
     Path(friend_id): Path<i32>,
 ) -> Result<Json<Friendship>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
+    let user_id = claims.user_id;
     
     info!("Ajout de l'ami {} à l'utilisateur {}", friend_id, user_id);
     
@@ -159,9 +160,9 @@ async fn reject_friend(
 
 async fn get_pending_requests(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<FriendInfo>>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
+    let user_id = claims.user_id;
     
     info!("Récupération des demandes d'ami en attente pour l'utilisateur {}", user_id);
     

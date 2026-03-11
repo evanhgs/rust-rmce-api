@@ -9,6 +9,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rmce_test
+  JWT_SECRET: test_jwt_secret_for_ci
+  REDIS_URL: redis://localhost:6379
+  API_BASE_URL: http://localhost:5000
   RUST_LOG: info
 
 jobs:
@@ -27,6 +30,16 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -65,7 +78,7 @@ jobs:
       run: cargo install sqlx-cli --no-default-features --features postgres --locked
 
     - name: Run database migrations
-      run: sqlx migrate run
+      run: sqlx migrate run --source api/migrations
 
     - name: Run Clippy
       run: cargo clippy -- -D warnings
@@ -80,7 +93,7 @@ jobs:
       run: cargo test --lib --verbose
 
     - name: Run integration tests
-      run: cargo test --test integration_tests -- --test-threads=1 --nocapture
+      run: cargo test --test integration_tests -p rust-rmce-api -- --test-threads=1 --nocapture
 
     - name: Run all tests
       run: cargo test --verbose -- --test-threads=1
@@ -105,11 +118,18 @@ jobs:
     - name: Build release binary
       run: cargo build --release --verbose
 
-    - name: Upload release artifact
+    - name: Upload api artifact
       uses: actions/upload-artifact@v5
       with:
         name: rust-rmce-api
         path: target/release/rust-rmce-api
+        retention-days: 7
+
+    - name: Upload geo-service artifact
+      uses: actions/upload-artifact@v5
+      with:
+        name: geo-service
+        path: target/release/geo-service
         retention-days: 7
 
   security-audit:

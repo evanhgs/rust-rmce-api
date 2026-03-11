@@ -5,7 +5,7 @@ use axum::{
     response::Response,
 };
 use tracing::error;
-use crate::routes::auth::verify_jwt;
+use shared::jwt::verify_jwt;
 
 /// Middleware pour extraire et vérifier le JWT token
 pub async fn auth_middleware(

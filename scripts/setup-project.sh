@@ -53,7 +53,7 @@ echo -e "${GREEN}✓  PostgreSQL is ready${NC}"
 echo ""
 
 echo -e "${BLUE}🔄 Step 2: Running database migrations...${NC}"
-sqlx migrate run
+sqlx migrate run --source api/migrations
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓  Migrations completed successfully${NC}"
@@ -88,7 +88,8 @@ echo "  2. Run tests:       ${BLUE}./run-all-tests.sh${NC}"
 echo "  3. View logs:       ${BLUE}docker compose logs -f${NC}"
 echo "  4. Stop database:   ${BLUE}docker compose down${NC}"
 echo ""
-echo "API will be available at: http://localhost:3000"
+echo "API will be available at:         http://localhost:5000"
+echo "geo-service WebSocket available at: ws://localhost:8080/ws?token=<jwt>"
 echo "Database is running on:   localhost:5432"
 echo ""
 
