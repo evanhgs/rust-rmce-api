@@ -2,7 +2,7 @@ name: Rust CI/CD
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -106,7 +106,7 @@ jobs:
       run: cargo build --release --verbose
 
     - name: Upload release artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: rust-rmce-api
         path: target/release/rust-rmce-api
