@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post}
 };
 use tracing::{info, warn, error};
+use shared::jwt::Claims;
 
 use crate::{
     db::DbPool,
@@ -32,10 +33,10 @@ pub fn router() -> Router {
 
 async fn create_challenge(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
     Json(new_challenge): Json<CreateChallenge>,
 ) -> Result<Json<Challenge>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
+    let user_id = claims.user_id;
 
     info!("Création d'un défi sur le parcours {} par l'utilisateur {}", new_challenge.route_id, user_id);
 
@@ -90,19 +91,21 @@ async fn get_challenge(
 
 async fn accept_challenge(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
     Path(id): Path<i32>,
 ) -> Result<Json<Challenge>, StatusCode> {
-    // TODO: Get user_id from JWT token and verify they are the challenged user
+    let user_id = claims.user_id;
 
-    info!("Acceptation du défi {}", id);
+    info!("Acceptation du défi {} par l'utilisateur {}", id, user_id);
 
     let challenge = sqlx::query_as::<_, Challenge>(
         "UPDATE challenges
          SET status = 'active'
-         WHERE id = $1 AND status = 'pending'
+         WHERE id = $1 AND status = 'pending' AND challenged_id = $2
          RETURNING id, route_id, challenger_id, challenged_id, status, challenger_time, challenged_time, winner_id, created_at, completed_at"
     )
     .bind(id)
+    .bind(user_id)
     .fetch_optional(&pool)
     .await
     .map_err(|e| {
