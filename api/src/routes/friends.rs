@@ -15,7 +15,7 @@ use crate::{
 pub fn router() -> Router {
     Router::new()
         .route("/", get(get_friends))
-        .route("/add/{friend_id}", post(add_friend))
+        .route("/add/{username}", post(add_friend))
         .route("/accept/{friendship_id}", put(accept_friend))
         .route("/reject/{friendship_id}", put(reject_friend))
         .route("/pending", get(get_pending_requests))
@@ -51,30 +51,27 @@ async fn get_friends(
 async fn add_friend(
     Extension(pool): Extension<DbPool>,
     Extension(claims): Extension<Claims>,
-    Path(friend_id): Path<i32>,
+    Path(username): Path<String>,
 ) -> Result<Json<Friendship>, StatusCode> {
     let user_id = claims.user_id;
-    
-    info!("Ajout de l'ami {} à l'utilisateur {}", friend_id, user_id);
-    
-    // Check if friend exists
-    let friend_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)"
+
+    info!("Ajout de l'ami '{}' à l'utilisateur {}", username, user_id);
+
+    let friend_id = sqlx::query_scalar::<_, i32>(
+        "SELECT id FROM users WHERE username = $1"
     )
-    .bind(friend_id)
-    .fetch_one(&pool)
+    .bind(&username)
+    .fetch_optional(&pool)
     .await
     .map_err(|e| {
-        error!("Erreur lors de la vérification de l'ami: {}", e);
+        error!("Erreur lors de la recherche de l'utilisateur '{}': {}", username, e);
         StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or_else(|| {
+        warn!("Utilisateur '{}' non trouvé", username);
+        StatusCode::NOT_FOUND
     })?;
-    
-    if !friend_exists {
-        warn!("Ami {} non trouvé", friend_id);
-        return Err(StatusCode::NOT_FOUND);
-    }
-    
-    // Add friendship
+
     let friendship = sqlx::query_as::<_, Friendship>(
         "INSERT INTO friendships (user_id, friend_id, status)
          VALUES ($1, $2, 'pending')
@@ -90,7 +87,7 @@ async fn add_friend(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    info!("Demande d'ami envoyée avec succès à {}", friend_id);
+    info!("Demande d'ami envoyée avec succès à '{}' (id={})", username, friend_id);
     Ok(Json(friendship))
 }
 
