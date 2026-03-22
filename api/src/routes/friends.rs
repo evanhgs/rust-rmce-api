@@ -9,7 +9,7 @@ use shared::jwt::Claims;
 
 use crate::{
     db::DbPool,
-    models::friendship::{Friendship, FriendInfo},
+    models::friendship::{Friendship, FriendInfo, PendingRequest},
 };
 
 pub fn router() -> Router {
@@ -158,13 +158,13 @@ async fn reject_friend(
 async fn get_pending_requests(
     Extension(pool): Extension<DbPool>,
     Extension(claims): Extension<Claims>,
-) -> Result<Json<Vec<FriendInfo>>, StatusCode> {
+) -> Result<Json<Vec<PendingRequest>>, StatusCode> {
     let user_id = claims.user_id;
-    
+
     info!("Récupération des demandes d'ami en attente pour l'utilisateur {}", user_id);
-    
-    let requests = sqlx::query_as::<_, FriendInfo>(
-        "SELECT u.id, u.username, u.email, f.status
+
+    let requests = sqlx::query_as::<_, PendingRequest>(
+        "SELECT f.id AS friendship_id, u.id, u.username, u.email, f.status
          FROM friendships f
          JOIN users u ON u.id = f.user_id
          WHERE f.friend_id = $1 AND f.status = 'pending'

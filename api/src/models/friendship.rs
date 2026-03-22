@@ -19,6 +19,16 @@ pub struct FriendInfo {
     pub status: String,
 }
 
+/// Demande d'ami en attente — inclut l'id de la friendship pour accept/reject
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct PendingRequest {
+    pub friendship_id: i32,
+    pub id: i32,
+    pub username: String,
+    pub email: String,
+    pub status: String,
+}
+
 fn serialize_datetime<S>(date: &Option<chrono::NaiveDateTime>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
