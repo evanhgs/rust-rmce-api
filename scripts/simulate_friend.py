@@ -2,8 +2,8 @@
 """
 Simule un ami connecté qui se déplace autour de Valence.
 Usage: 
-python3 -m venv /tmp/rmce-venv                                                                                                                                      
-source /tmp/rmce-venv/bin/activate                                                                                                                                  
+python3 -m venv .venv                                                                                                                                    
+source .venv/bin/activate                                                                                                                                  
 pip install websockets requests
 python3 scripts/simulate_friend.py
 """

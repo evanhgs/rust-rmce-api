@@ -34,7 +34,12 @@ async fn get_friends(
          FROM friendships f
          JOIN users u ON u.id = f.friend_id
          WHERE f.user_id = $1 AND f.status = 'accepted'
-         ORDER BY u.username"
+         UNION
+         SELECT u.id, u.username, u.email, f.status
+         FROM friendships f
+         JOIN users u ON u.id = f.user_id
+         WHERE f.friend_id = $1 AND f.status = 'accepted'
+         ORDER BY username"
     )
     .bind(user_id)
     .fetch_all(&pool)
