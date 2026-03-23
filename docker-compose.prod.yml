@@ -1,38 +1,75 @@
-version: '3.8'
+  services:
+    rmce-db:
+      image: postgres:latest
+      container_name: rmce_db
+      restart: unless-stopped
+      environment:
+        POSTGRES_DB:       ${POSTGRES_DB:-rmce_db}
+        POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        PGDATA:            /var/lib/postgresql/data/pgdata
+      volumes:
+        - rmce-data:/var/lib/postgresql/data
+      networks:
+        - rmce-network
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rmce_db}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 
-services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/rmce_db
-      - JWT_SECRET=${JWT_SECRET}
-      - RUST_LOG=info
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
+    redis:
+      image: redis:7-alpine
+      container_name: rmce_redis
+      restart: unless-stopped
+      networks:
+        - rmce-network
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: rmce_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d rmce_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    api:
+      image: evanhs/rmce-api:latest
+      container_name: rmce_api
+      restart: unless-stopped
+      depends_on:
+        rmce-db:
+          condition: service_healthy
+      environment:
+        DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@rmce-db:5432/${POSTGRES_DB:-rmce_db}
+        JWT_SECRET:   ${JWT_SECRET}
+        RUST_LOG:     ${RUST_LOG:-info}
+      ports:
+        - "5000:5000"
+      networks:
+        - rmce-network
 
-volumes:
-  postgres_data:
+    geo-service:
+      image: evanhs/rmce-geo-service:latest
+      container_name: rmce_geo
+      restart: unless-stopped
+      depends_on:
+        redis:
+          condition: service_healthy
+        api:
+          condition: service_started
+      environment:
+        REDIS_URL:    redis://redis:6379
+        API_BASE_URL: http://api:5000
+        JWT_SECRET:   ${JWT_SECRET}
+        RUST_LOG:     ${RUST_LOG:-info}
+      ports:
+        - "8080:8080"
+      networks:
+        - rmce-network
+
+  networks:
+    rmce-network:
+      driver: bridge
+      name: rmce-network
+
+  volumes:
+    rmce-data:
 

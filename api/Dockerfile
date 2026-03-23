@@ -13,9 +13,19 @@ RUN mkdir -p geo-service/src && \
 ENV SQLX_OFFLINE=true
 RUN cargo build --release -p rust-rmce-api
 
+# Build sqlx-cli (only the postgres feature to keep it light)
+RUN cargo install sqlx-cli --no-default-features --features postgres
+
 FROM debian:bookworm-slim
 RUN apt-get update && \
     apt-get install -y libssl3 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /workspace/target/release/rust-rmce-api /usr/local/bin/
-CMD ["rust-rmce-api"]
+COPY --from=builder /usr/local/cargo/bin/sqlx /usr/local/bin/
+COPY api/migrations /migrations
+
+COPY api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

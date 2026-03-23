@@ -16,8 +16,10 @@ import requests
 import websockets
 
 # ─── Config ────────────────────────────────────────────────────────────────────
-API_URL = "http://localhost:5000"
-GEO_URL = "ws://localhost:8080"
+API_URL = "https://rmceapi.evanhgs.fr"
+
+
+GEO_URL = "wss://rmcegeo.evanhgs.fr"
 
 EMAIL    = "ami@test.com"
 PASSWORD = "Password1!"
