@@ -5,16 +5,17 @@ use axum::{
     routing::{get, post, put}
 };
 use tracing::{info, warn, error};
+use shared::jwt::Claims;
 
 use crate::{
     db::DbPool,
-    models::friendship::{Friendship, FriendInfo},
+    models::friendship::{Friendship, FriendInfo, PendingRequest},
 };
 
 pub fn router() -> Router {
     Router::new()
         .route("/", get(get_friends))
-        .route("/add/{friend_id}", post(add_friend))
+        .route("/add/{username}", post(add_friend))
         .route("/accept/{friendship_id}", put(accept_friend))
         .route("/reject/{friendship_id}", put(reject_friend))
         .route("/pending", get(get_pending_requests))
@@ -22,9 +23,9 @@ pub fn router() -> Router {
 
 async fn get_friends(
     Extension(pool): Extension<DbPool>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<Json<Vec<FriendInfo>>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
+    let user_id = claims.user_id;
     
     info!("Récupération des amis de l'utilisateur {}", user_id);
     
@@ -33,7 +34,12 @@ async fn get_friends(
          FROM friendships f
          JOIN users u ON u.id = f.friend_id
          WHERE f.user_id = $1 AND f.status = 'accepted'
-         ORDER BY u.username"
+         UNION
+         SELECT u.id, u.username, u.email, f.status
+         FROM friendships f
+         JOIN users u ON u.id = f.user_id
+         WHERE f.friend_id = $1 AND f.status = 'accepted'
+         ORDER BY username"
     )
     .bind(user_id)
     .fetch_all(&pool)
@@ -49,31 +55,28 @@ async fn get_friends(
 
 async fn add_friend(
     Extension(pool): Extension<DbPool>,
-    Path(friend_id): Path<i32>,
+    Extension(claims): Extension<Claims>,
+    Path(username): Path<String>,
 ) -> Result<Json<Friendship>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
-    
-    info!("Ajout de l'ami {} à l'utilisateur {}", friend_id, user_id);
-    
-    // Check if friend exists
-    let friend_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)"
+    let user_id = claims.user_id;
+
+    info!("Ajout de l'ami '{}' à l'utilisateur {}", username, user_id);
+
+    let friend_id = sqlx::query_scalar::<_, i32>(
+        "SELECT id FROM users WHERE username = $1"
     )
-    .bind(friend_id)
-    .fetch_one(&pool)
+    .bind(&username)
+    .fetch_optional(&pool)
     .await
     .map_err(|e| {
-        error!("Erreur lors de la vérification de l'ami: {}", e);
+        error!("Erreur lors de la recherche de l'utilisateur '{}': {}", username, e);
         StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or_else(|| {
+        warn!("Utilisateur '{}' non trouvé", username);
+        StatusCode::NOT_FOUND
     })?;
-    
-    if !friend_exists {
-        warn!("Ami {} non trouvé", friend_id);
-        return Err(StatusCode::NOT_FOUND);
-    }
-    
-    // Add friendship
+
     let friendship = sqlx::query_as::<_, Friendship>(
         "INSERT INTO friendships (user_id, friend_id, status)
          VALUES ($1, $2, 'pending')
@@ -89,7 +92,7 @@ async fn add_friend(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    info!("Demande d'ami envoyée avec succès à {}", friend_id);
+    info!("Demande d'ami envoyée avec succès à '{}' (id={})", username, friend_id);
     Ok(Json(friendship))
 }
 
@@ -159,14 +162,14 @@ async fn reject_friend(
 
 async fn get_pending_requests(
     Extension(pool): Extension<DbPool>,
-) -> Result<Json<Vec<FriendInfo>>, StatusCode> {
-    // TODO: Get user_id from JWT token
-    let user_id = 1; // Temporary placeholder
-    
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<PendingRequest>>, StatusCode> {
+    let user_id = claims.user_id;
+
     info!("Récupération des demandes d'ami en attente pour l'utilisateur {}", user_id);
-    
-    let requests = sqlx::query_as::<_, FriendInfo>(
-        "SELECT u.id, u.username, u.email, f.status
+
+    let requests = sqlx::query_as::<_, PendingRequest>(
+        "SELECT f.id AS friendship_id, u.id, u.username, u.email, f.status
          FROM friendships f
          JOIN users u ON u.id = f.user_id
          WHERE f.friend_id = $1 AND f.status = 'pending'

@@ -352,7 +352,7 @@ async fn user_story_04_add_friend_and_manage_requests() -> Result<(), Box<dyn st
     // Story: Alice ajoute Bob comme ami
     let request = Request::builder()
         .method("POST")
-        .uri(&format!("/friends/add/{}", user2_id))
+        .uri(&format!("/friends/add/{}", user2_name))
         .header("Authorization", format!("Bearer {}", token1))
         .body(Body::empty())?;
 

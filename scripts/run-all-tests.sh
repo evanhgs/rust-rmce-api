@@ -55,9 +55,9 @@ echo ""
 
 # Verify migrations are applied
 echo -e "${BLUE}🔄 Checking migrations...${NC}"
-sqlx migrate info || {
+sqlx migrate info --source api/migrations || {
     echo -e "${YELLOW}⚠️  Running migrations...${NC}"
-    sqlx migrate run
+    sqlx migrate run --source api/migrations
     echo -e "${GREEN}✓  Migrations completed${NC}"
 }
 echo ""
@@ -66,7 +66,7 @@ echo ""
 echo -e "${BLUE}🧪 Running integration tests...${NC}"
 echo ""
 
-cargo test --test integration_tests -- --test-threads=1 --nocapture
+cargo test --test integration_tests -p rust-rmce-api -- --test-threads=1 --nocapture
 
 TEST_RESULT=$?
 
